@@ -1,0 +1,20 @@
+﻿@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base { html { @apply bg-white text-text-primary; } body { @apply bg-gray-50; } }
+@layer components {
+  .btn-primary   { @apply bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 shadow-brand active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-secondary { @apply bg-secondary hover:bg-secondary-dark text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 active:scale-95; }
+  .btn-ghost     { @apply text-text-secondary hover:text-primary hover:bg-red-50 px-4 py-2 rounded-lg transition-all duration-200; }
+  .btn-outline   { @apply border border-primary text-primary hover:bg-primary hover:text-white px-6 py-3 rounded-lg transition-all duration-200; }
+  .card          { @apply bg-white rounded-2xl border border-surface-border shadow-card p-6; }
+  .input         { @apply w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200; }
+  .badge         { @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold; }
+  .badge-primary   { @apply badge bg-red-100 text-primary; }
+  .badge-secondary { @apply badge bg-yellow-100 text-yellow-700; }
+  .badge-success   { @apply badge bg-green-100 text-green-700; }
+  .badge-warning   { @apply badge bg-orange-100 text-orange-700; }
+  .badge-muted     { @apply badge bg-gray-100 text-gray-600; }
+  .badge-info      { @apply badge bg-blue-100 text-blue-700; }
+}

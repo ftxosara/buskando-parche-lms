@@ -1,0 +1,10 @@
+﻿const router = require("express").Router();
+const { authenticate, authorize } = require("../middleware/auth");
+const { listUsers, createUser, updateUser, deactivateUser, hardDeleteUser } = require("../controllers/userController");
+router.use(authenticate);
+router.get("/", authorize("ADMIN","FORMADOR"), listUsers);
+router.post("/", authorize("ADMIN"), createUser);
+router.put("/:id", authorize("ADMIN"), updateUser);
+router.delete("/:id", authorize("ADMIN"), deactivateUser);
+router.delete("/:id/hard", authorize("ADMIN"), hardDeleteUser);
+module.exports = router;

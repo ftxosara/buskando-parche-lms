@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// â”€â”€â”€ ENUMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+enum Role {
+  ADMIN
+  FORMADOR
+  BENEFICIARIO
+}
+
+enum Gender {
+  MASCULINO
+  FEMENINO
+  NO_BINARIO
+  PREFIERO_NO_DECIR
+}
+
+enum PopulationGroup {
+  EMPRENDEDOR
+  MIPYME
+  PRESTADOR_TURISTICO
+  VICTIMA_CONFLICTO
+  DISCAPACIDAD
+  AFRODESCENDIENTE
+  INDIGENA
+  ADULTO_MAYOR
+  OTRO
+}
+
+enum CourseModality {
+  VIRTUAL
+  PRESENCIAL
+}
+
+enum EnrollmentStatus {
+  ACTIVO
+  COMPLETADO
+  INACTIVO
+}
+
+enum AttendanceStatus {
+  PRESENTE
+  AUSENTE
+  EXCUSA
+}
+
+// â”€â”€â”€ USERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String   @map("password_hash")
+  role           Role     @default(BENEFICIARIO)
+
+  // Info personal
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  cedula         String   @unique
+  phone          String?
+
+  // Info socio-demogrÃ¡fica (trazabilidad del contrato)
+  gender         Gender?
+  populationGroup PopulationGroup? @map("population_group")
+  upz            String?
+  locality       String?
+  entrepreneurshipStatus String? @map("entrepreneurship_status")
+  birthDate      DateTime? @map("birth_date")
+
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  isActive      Boolean   @default(true)
+  avatarUrl     String? @map("is_active")
+
+  // Relaciones
+  enrollments    Enrollment[]
+  attendances    Attendance[]
+  submissions    Submission[]
+  forumPosts     ForumPost[]
+  forumReplies   ForumReply[]
+  coursesTeaching Course[] @relation("CourseFormador")
+
+  @@map("users")
+}
+
+// â”€â”€â”€ COURSES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model Course {
+  id             String         @id @default(cuid())
+  title          String
+  description    String
+  modality       CourseModality @default(VIRTUAL)
+  coverImageUrl  String?        @map("cover_image_url")
+  totalSessions  Int            @default(20) @map("total_sessions")
+  isPublished    Boolean        @default(false) @map("is_published")
+
+  formadorId     String?        @map("formador_id")
+  formador       User?          @relation("CourseFormador", fields: [formadorId], references: [id])
+
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  sessions       Session[]
+  enrollments    Enrollment[]
+  forumPosts     ForumPost[]
+
+  @@map("courses")
+}
+
+// â”€â”€â”€ SESSIONS (hasta 20 por curso) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model Session {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  order       Int      // 1..20
+  scheduledAt DateTime? @map("scheduled_at")
+  durationMin Int      @default(120) @map("duration_min")
+
+  resources   Resource[]
+  attendances Attendance[]
+  submissions Submission[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([courseId, order])
+  @@map("sessions")
+}
+
+// â”€â”€â”€ RESOURCES (video, pdf, link) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model Resource {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  title     String
+  type      String   // "video" | "pdf" | "link" | "image"
+  url       String
+  order     Int      @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("resources")
+}
+
+// â”€â”€â”€ ENROLLMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id])
+  courseId  String           @map("course_id")
+  course    Course           @relation(fields: [courseId], references: [id])
+  status    EnrollmentStatus @default(ACTIVO)
+
+  enrolledAt  DateTime @default(now()) @map("enrolled_at")
+  completedAt DateTime? @map("completed_at")
+
+  certificateUrl String? @map("certificate_url")
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+// â”€â”€â”€ ATTENDANCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model Attendance {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id])
+  sessionId String           @map("session_id")
+  session   Session          @relation(fields: [sessionId], references: [id])
+  status    AttendanceStatus @default(PRESENTE)
+  notes     String?
+  markedAt  DateTime         @default(now()) @map("marked_at")
+
+  @@unique([userId, sessionId])
+  @@map("attendances")
+}
+
+// â”€â”€â”€ EVALUATIONS / SUBMISSIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model Evaluation {
+  id          String   @id @default(cuid())
+  sessionId   String?  @map("session_id")
+  courseId    String?  @map("course_id")
+  title       String
+  description String?
+  maxScore    Float    @default(100) @map("max_score")
+  passingScore Float   @default(60) @map("passing_score")
+
+  questions   Json     // JSON array of question objects
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  submissions Submission[]
+
+  @@map("evaluations")
+}
+
+model Submission {
+  id           String     @id @default(cuid())
+  evaluationId String     @map("evaluation_id")
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id])
+  userId       String     @map("user_id")
+  user         User       @relation(fields: [userId], references: [id])
+  sessionId    String?    @map("session_id")
+  session      Session?   @relation(fields: [sessionId], references: [id])
+
+  answers      Json
+  score        Float?
+  feedback     String?
+  submittedAt  DateTime   @default(now()) @map("submitted_at")
+  gradedAt     DateTime?  @map("graded_at")
+
+  @@map("submissions")
+}
+
+// â”€â”€â”€ FORUM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+model ForumPost {
+  id        String       @id @default(cuid())
+  courseId  String       @map("course_id")
+  course    Course       @relation(fields: [courseId], references: [id])
+  authorId  String       @map("author_id")
+  author    User         @relation(fields: [authorId], references: [id])
+
+  title     String
+  body      String
+  isPinned  Boolean      @default(false) @map("is_pinned")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  replies   ForumReply[]
+
+  @@map("forum_posts")
+}
+
+model ForumReply {
+  id        String    @id @default(cuid())
+  postId    String    @map("post_id")
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String    @map("author_id")
+  author    User      @relation(fields: [authorId], references: [id])
+
+  body      String
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("forum_replies")
+}
