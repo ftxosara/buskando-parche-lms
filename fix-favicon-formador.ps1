@@ -1,4 +1,48 @@
-﻿"use client";
+Write-Host "=== FIX FAVICON + FORMADOR EDIT ===" -ForegroundColor Yellow
+
+# ── 1. FAVICON: copiar logo como favicon ─────────────────────
+$faviconScript = @'
+// Script para copiar logo.png como favicon
+const fs = require("fs");
+const src = "frontend/public/images/logo.png";
+const dst1 = "frontend/public/favicon.ico";
+const dst2 = "frontend/public/favicon.png";
+if (fs.existsSync(src)) {
+  fs.copyFileSync(src, dst2);
+  fs.copyFileSync(src, dst1);
+  console.log("Favicon copiado OK");
+} else {
+  console.log("logo.png no encontrado, creando favicon.png vacio");
+}
+'@
+[System.IO.File]::WriteAllText("$PWD\copy-favicon.js", $faviconScript, [System.Text.Encoding]::UTF8)
+node copy-favicon.js
+Remove-Item copy-favicon.js -Force
+Write-Host "Favicon OK" -ForegroundColor Green
+
+# ── 2. LAYOUT: agregar favicon al head ───────────────────────
+$layoutPath = "$PWD\frontend\src\app\layout.tsx"
+$layout = [System.IO.File]::ReadAllText($layoutPath, [System.Text.Encoding]::UTF8)
+if ($layout -notmatch "favicon") {
+  $layout = $layout -replace "export const metadata", @'
+export const metadata
+'@
+  # Agregar icons al metadata
+  $layout = $layout -replace "title: ['""]Buskando Parche['""]", @'
+title: "Buskando Parche LMS - Kennedy",
+    description: "Plataforma de formacion empresarial - Alcaldia Local de Kennedy",
+    icons: { icon: "/favicon.png", shortcut: "/favicon.png", apple: "/favicon.png" }
+'@
+  [System.IO.File]::WriteAllText($layoutPath, $layout, [System.Text.Encoding]::UTF8)
+  Write-Host "layout.tsx con favicon OK" -ForegroundColor Green
+} else {
+  Write-Host "favicon ya existe en layout" -ForegroundColor Gray
+}
+
+# ── 3. ADMIN USERS: quitar grupo poblacional para formadores
+#    y agregar asignacion de curso para formadores ─────────────
+New-Item -ItemType Directory -Force -Path "frontend\src\app\(dashboard)\admin\users" | Out-Null
+$adminUsers = '"use client";
 import { useEffect, useState } from "react";
 import AppShell from "@/components/layout/AppShell";
 import api from "@/lib/api";
@@ -292,4 +336,21 @@ export default function AdminUsersPage() {
       )}
     </AppShell>
   );
-}
+}'
+[System.IO.File]::WriteAllText("$PWD\frontend\src\app\(dashboard)\admin\users\page.tsx", $adminUsers, [System.Text.Encoding]::UTF8)
+Write-Host "Admin users actualizado OK" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host "FIX COMPLETO - Ahora sube a GitHub" -ForegroundColor Green
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "1. Abre GitHub Desktop" -ForegroundColor Cyan
+Write-Host "2. Escribe un resumen: 'Fix favicon + formador edit'" -ForegroundColor White
+Write-Host "3. Clic en 'Commit to main'" -ForegroundColor White
+Write-Host "4. Clic en 'Push origin'" -ForegroundColor White
+Write-Host ""
+Write-Host "Luego en el VPS:" -ForegroundColor Cyan
+Write-Host "  cd /home/proyectos/buskandoparche-LMS" -ForegroundColor White
+Write-Host "  git pull" -ForegroundColor White
+Write-Host "  docker compose -f docker-compose.prod.yml --env-file .env up -d --build" -ForegroundColor White
