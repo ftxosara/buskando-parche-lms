@@ -1,35 +1,55 @@
-const router = require('express').Router();
-const { authenticate, authorize } = require('../middleware/auth');
-const { PrismaClient } = require('@prisma/client');
-const multer = require('multer');
-const path = require('path');
-
+const router = require("express").Router();
+const { authenticate, authorize } = require("../middleware/auth");
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '../../uploads')),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
-});
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
-
-router.use(authenticate);
-
-router.get('/:id', async (req, res) => {
-  const session = await prisma.session.findUnique({
-    where: { id: req.params.id },
-    include: { resources: { orderBy: { order: 'asc' } } },
-  });
-  if (!session) return res.status(404).json({ error: 'Sesión no encontrada' });
-  return res.json(session);
+// GET sesiones de un curso
+router.get("/course/:courseId", authenticate, async (req, res) => {
+  try {
+    const sessions = await prisma.session.findMany({
+      where: { courseId: req.params.courseId },
+      include: { resources: true },
+      orderBy: { order: "asc" },
+    });
+    return res.json(sessions);
+  } catch { return res.status(500).json({ error: "Error" }); }
 });
 
-router.post('/:id/resources', authorize('FORMADOR', 'ADMIN'), upload.single('file'), async (req, res) => {
-  const { title, type, url } = req.body;
-  const resourceUrl = req.file ? `/uploads/${req.file.filename}` : url;
-  const resource = await prisma.resource.create({
-    data: { sessionId: req.params.id, title, type, url: resourceUrl },
-  });
-  return res.status(201).json(resource);
+// PUT editar sesion
+router.put("/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    const { title, description, liveUrl } = req.body;
+    const s = await prisma.session.update({ where: { id: req.params.id }, data: { title, description, liveUrl } });
+    return res.json(s);
+  } catch { return res.status(500).json({ error: "Error" }); }
+});
+
+// DELETE eliminar sesion
+router.delete("/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    await prisma.resource.deleteMany({ where: { sessionId: req.params.id } });
+    await prisma.submission.deleteMany({ where: { sessionId: req.params.id } });
+    await prisma.attendance.deleteMany({ where: { sessionId: req.params.id } });
+    await prisma.session.delete({ where: { id: req.params.id } });
+    return res.json({ message: "Sesion eliminada" });
+  } catch(e) { return res.status(500).json({ error: "Error: "+e.message }); }
+});
+
+// DELETE eliminar recurso/material
+router.delete("/resource/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    await prisma.resource.delete({ where: { id: req.params.id } });
+    return res.json({ message: "Recurso eliminado" });
+  } catch { return res.status(500).json({ error: "Error" }); }
+});
+
+// PUT editar recurso
+router.put("/resource/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    const { title, description, url, type } = req.body;
+    const r = await prisma.resource.update({ where: { id: req.params.id }, data: { title, description, url, type } });
+    return res.json(r);
+  } catch { return res.status(500).json({ error: "Error" }); }
 });
 
 module.exports = router;

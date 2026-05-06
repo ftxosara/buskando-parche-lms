@@ -1,4 +1,69 @@
-"use client";
+Write-Host "=== FIX FORMADOR: EDITAR/ELIMINAR CONTENIDO ===" -ForegroundColor Yellow
+
+# ── 1. BACKEND: rutas para editar/eliminar sesiones y recursos ─
+$sessionsRoute = 'const router = require("express").Router();
+const { authenticate, authorize } = require("../middleware/auth");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+
+// GET sesiones de un curso
+router.get("/course/:courseId", authenticate, async (req, res) => {
+  try {
+    const sessions = await prisma.session.findMany({
+      where: { courseId: req.params.courseId },
+      include: { resources: true },
+      orderBy: { order: "asc" },
+    });
+    return res.json(sessions);
+  } catch { return res.status(500).json({ error: "Error" }); }
+});
+
+// PUT editar sesion
+router.put("/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    const { title, description, liveUrl } = req.body;
+    const s = await prisma.session.update({ where: { id: req.params.id }, data: { title, description, liveUrl } });
+    return res.json(s);
+  } catch { return res.status(500).json({ error: "Error" }); }
+});
+
+// DELETE eliminar sesion
+router.delete("/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    await prisma.resource.deleteMany({ where: { sessionId: req.params.id } });
+    await prisma.submission.deleteMany({ where: { sessionId: req.params.id } });
+    await prisma.attendance.deleteMany({ where: { sessionId: req.params.id } });
+    await prisma.session.delete({ where: { id: req.params.id } });
+    return res.json({ message: "Sesion eliminada" });
+  } catch(e) { return res.status(500).json({ error: "Error: "+e.message }); }
+});
+
+// DELETE eliminar recurso/material
+router.delete("/resource/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    await prisma.resource.delete({ where: { id: req.params.id } });
+    return res.json({ message: "Recurso eliminado" });
+  } catch { return res.status(500).json({ error: "Error" }); }
+});
+
+// PUT editar recurso
+router.put("/resource/:id", authenticate, authorize("FORMADOR","ADMIN"), async (req, res) => {
+  try {
+    const { title, description, url, type } = req.body;
+    const r = await prisma.resource.update({ where: { id: req.params.id }, data: { title, description, url, type } });
+    return res.json(r);
+  } catch { return res.status(500).json({ error: "Error" }); }
+});
+
+module.exports = router;
+'
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText("$PWD\backend\src\routes\sessions.js", $sessionsRoute, $utf8NoBom)
+Write-Host "sessions.js con editar/eliminar OK" -ForegroundColor Green
+
+# ── 2. FORMADOR CURSOS PAGE: con editar/eliminar ─────────────
+New-Item -ItemType Directory -Force -Path "frontend\src\app\(dashboard)\formador\courses" | Out-Null
+$formCourses = '"use client";
 import { useEffect, useState } from "react";
 import AppShell from "@/components/layout/AppShell";
 import api from "@/lib/api";
@@ -239,4 +304,18 @@ export default function FormadorCoursesPage() {
       )}
     </AppShell>
   );
-}
+}'
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText("$PWD\frontend\src\app\(dashboard)\formador\courses\page.tsx", $formCourses, $utf8NoBom)
+Write-Host "Formador courses con editar/eliminar OK" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host "FIX FORMADOR CURSOS COMPLETO" -ForegroundColor Green
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "1. GitHub Desktop -> Commit 'Fix formador editar cursos' -> Push" -ForegroundColor Cyan
+Write-Host "2. En VPS:" -ForegroundColor Cyan
+Write-Host "   cd /home/proyectos/buskandoparche-LMS" -ForegroundColor White
+Write-Host "   git pull" -ForegroundColor White
+Write-Host "   docker compose -f docker-compose.prod.yml --env-file .env up -d --build" -ForegroundColor White
