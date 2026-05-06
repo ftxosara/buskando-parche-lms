@@ -1,4 +1,7 @@
-const router = require("express").Router();
+Write-Host "=== FIX SUBIDA DE ARCHIVOS COMPLETO ===" -ForegroundColor Yellow
+
+# ── 1. BACKEND: sessions.js con upload de archivos ───────────
+$sessionsJs = 'const router = require("express").Router();
 const { authenticate, authorize } = require("../middleware/auth");
 const { PrismaClient } = require("@prisma/client");
 const multer = require("multer");
@@ -138,3 +141,98 @@ router.get("/:sessionId/submissions", authenticate, authorize("FORMADOR","ADMIN"
 });
 
 module.exports = router;
+'
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText("$PWD\backend\src\routes\sessions.js", $sessionsJs, $utf8NoBom)
+Write-Host "sessions.js OK" -ForegroundColor Green
+
+# ── 2. SCHEMA: agregar fileName y comment a Submission ───────
+$schemaPath = "$PWD\backend\prisma\schema.prisma"
+$schema = [System.IO.File]::ReadAllText($schemaPath, [System.Text.Encoding]::UTF8)
+if ($schema -notmatch "fileName") {
+  $schema = $schema -replace "fileUrl\s+String\?", "fileUrl      String?`n  fileName     String?`n  comment      String?"
+  [System.IO.File]::WriteAllText($schemaPath, $schema, $utf8NoBom)
+  Write-Host "schema.prisma con fileName OK" -ForegroundColor Green
+} else {
+  Write-Host "schema.prisma ya tiene fileName" -ForegroundColor Gray
+}
+
+# ── 3. NGINX: servir archivos subidos ────────────────────────
+$nginxPath = "$PWD\nginx\nginx.conf"
+if (Test-Path $nginxPath) {
+  $nginx = [System.IO.File]::ReadAllText($nginxPath, [System.Text.Encoding]::UTF8)
+  if ($nginx -notmatch "materials") {
+    $nginx = $nginx -replace "location /uploads/ \{[^}]+\}", "location /uploads/ {
+      alias /app/uploads/;
+      expires 7d;
+      add_header Content-Disposition 'attachment';
+    }"
+    [System.IO.File]::WriteAllText($nginxPath, $nginx, $utf8NoBom)
+    Write-Host "nginx.conf con downloads OK" -ForegroundColor Green
+  }
+}
+
+# ── 4. FORMADOR COURSES: boton subir archivo ─────────────────
+$coursesPath = "$PWD\frontend\src\app\(dashboard)\formador\courses\page.tsx"
+$courses = [System.IO.File]::ReadAllText($coursesPath, [System.Text.Encoding]::UTF8)
+
+# Agregar funcion uploadFile si no existe
+if ($courses -notmatch "uploadFile") {
+  $courses = $courses -replace "const addResource = async \(sessionId: string\)", @'
+const uploadFile = async (sessionId: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.jpg,.png,.zip";
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const title = prompt("Nombre del material (dejar vacio = nombre del archivo):", file.name);
+      if (title === null) return;
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("title", title || file.name);
+      try {
+        await api.post("/sessions/" + sessionId + "/resources/file", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        const res = await api.get("/courses/lobby");
+        const updated = res.data.find((c: any) => c.id === courseId);
+        if (updated) setCourse(updated);
+        alert("Archivo subido correctamente");
+      } catch { alert("Error al subir el archivo"); }
+    };
+    input.click();
+  };
+
+  const addResource = async (sessionId: string)
+'@
+  [System.IO.File]::WriteAllText($coursesPath, $courses, $utf8NoBom)
+  Write-Host "Formador courses con uploadFile OK" -ForegroundColor Green
+}
+
+# Agregar boton "Subir archivo" en la UI del formador
+$courses = [System.IO.File]::ReadAllText($coursesPath, [System.Text.Encoding]::UTF8)
+if ($courses -notmatch "Subir archivo") {
+  $courses = $courses -replace '<button[^>]+Material / Enlace[^/]+/button>', @'
+<button
+                          onClick={() => { setActiveTab(s.id, "material"); setShowForm({...showForm, [s.id]: true}); }}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab[s.id] === "material" ? "bg-primary text-white shadow-sm" : "bg-gray-100 text-text-secondary hover:bg-gray-200"}`}>
+                          <Upload className="w-4 h-4" /> Material / Enlace
+                        </button>
+                        <button
+                          onClick={() => uploadFile(s.id)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all">
+                          <Upload className="w-4 h-4" /> Subir archivo
+                        </button>
+'@
+  [System.IO.File]::WriteAllText($coursesPath, $courses, $utf8NoBom)
+}
+
+Write-Host ""
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host "FIX UPLOAD COMPLETO" -ForegroundColor Green
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "1. GitHub Desktop -> Commit 'Fix subida archivos' -> Push" -ForegroundColor Cyan
+Write-Host "2. En VPS:" -ForegroundColor Cyan
+Write-Host "   cd /home/proyectos/buskandoparche-LMS" -ForegroundColor White
+Write-Host "   git pull" -ForegroundColor White
+Write-Host "   docker compose -f docker-compose.prod.yml --env-file .env up -d --build" -ForegroundColor White
