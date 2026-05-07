@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import AppShell from "@/components/layout/AppShell";
 import api from "@/lib/api";
 import { useSearchParams } from "next/navigation";
 import { Plus, Trash2, Edit2, Link, FileText, BookOpen, X, CheckCircle, Loader2, ChevronDown, ChevronUp, Lock, Save, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
-export default function FormadorCoursesPage() {
+function FormadorCoursesPageInner() {
   const params = useSearchParams();
   const courseId = params.get("id");
   const [courses, setCourses] = useState<any[]>([]);
@@ -322,5 +322,13 @@ export default function FormadorCoursesPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function FormadorCoursesPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"/></div>}>
+      <FormadorCoursesPageInner />
+    </Suspense>
   );
 }
