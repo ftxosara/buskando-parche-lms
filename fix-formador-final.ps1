@@ -1,3 +1,10 @@
+Write-Host "=== REESCRIBIR FORMADOR COURSES COMPLETO ===" -ForegroundColor Yellow
+
+$path = "$PWD\frontend\src\app\(dashboard)\formador\courses\page.tsx"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+# Archivo completo y correcto - original con examenes + subir archivo
+$content = @'
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import AppShell from "@/components/layout/AppShell";
@@ -165,7 +172,7 @@ function FormadorCoursesPageInner() {
                             <span className="text-gray-300 text-xs">Sin URL</span>
                           )}
                           <button onClick={() => deleteResource(r.id)}
-                            className="ml-2 text-red-400 hover:text-red-600 text-xs" title="Eliminar">âœ•</button>
+                            className="ml-2 text-red-400 hover:text-red-600 text-xs" title="Eliminar">✕</button>
                         </div>
                       ))}
                     </div>
@@ -337,3 +344,18 @@ export default function FormadorCoursesPage() {
     </Suspense>
   );
 }
+'@
+
+[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
+$lines = ($content -split "`n").Count
+Write-Host "Archivo guardado: $lines lineas" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "==========================================" -ForegroundColor Yellow
+Write-Host "LISTO - Ahora:" -ForegroundColor Cyan
+Write-Host "1. GitHub Desktop -> Commit 'Fix formador final' -> Push" -ForegroundColor White
+Write-Host "2. VPS:" -ForegroundColor White
+Write-Host "   cd /home/proyectos/buskandoparche-LMS" -ForegroundColor White
+Write-Host "   git checkout frontend/src/app/(dashboard)/formador/courses/page.tsx" -ForegroundColor White
+Write-Host "   git pull" -ForegroundColor White
+Write-Host "   docker compose -f docker-compose.prod.yml --env-file .env up -d --build" -ForegroundColor White
