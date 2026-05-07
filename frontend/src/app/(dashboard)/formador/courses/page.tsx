@@ -164,8 +164,19 @@ function FormadorCoursesPageInner() {
                           ) : (
                             <span className="text-gray-300 text-xs">Sin URL</span>
                           )}
-                          <button onClick={() => deleteResource(r.id)}
-                            className="ml-2 text-red-400 hover:text-red-600 text-xs" title="Eliminar">âœ•</button>
+                          <button onClick={() => {
+                            const newUrl = window.prompt("Nueva URL para: " + r.title, r.url === "#" ? "" : r.url);
+                            if (newUrl !== null) {
+                              api.put("/sessions/resource/" + r.id, { title: r.title, url: newUrl, type: r.type })
+                                .then(() => api.get("/courses/" + courseId).then(({data}) => setCourse(data)))
+                                .catch(() => alert("Error al actualizar"));
+                            }
+                          }} className="ml-1 text-blue-400 hover:text-blue-600" title="Editar URL">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button onClick={() => deleteResource(r.id)} className="ml-1 text-red-400 hover:text-red-600" title="Eliminar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                          </button>
                         </div>
                       ))}
                     </div>
