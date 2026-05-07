@@ -116,6 +116,48 @@ export default function FormadorCoursesPage() {
     };
     input.click();
   };
+
+  const deleteSession = async (sessionId: string) => {
+    if (!confirm("Eliminar esta sesion y todo su contenido?")) return;
+    try {
+      await api.delete("/sessions/" + sessionId);
+      const res = await api.get("/courses/lobby");
+      const updated = res.data.find((c: any) => c.id === courseId);
+      if (updated) setCourse(updated);
+    } catch { alert("Error al eliminar la sesion"); }
+  };
+
+  const deleteResource = async (resourceId: string) => {
+    if (!confirm("Eliminar este recurso?")) return;
+    try {
+      await api.delete("/sessions/resource/" + resourceId);
+      const res = await api.get("/courses/lobby");
+      const updated = res.data.find((c: any) => c.id === courseId);
+      if (updated) setCourse(updated);
+    } catch { alert("Error al eliminar el recurso"); }
+  };
+
+  const uploadFile = (sessionId: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.jpg,.png,.zip";
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const title = window.prompt("Nombre del material:", file.name) || file.name;
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("title", title);
+      try {
+        await api.post("/sessions/" + sessionId + "/resources/file", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        const res = await api.get("/courses/lobby");
+        const updated = res.data.find((c: any) => c.id === courseId);
+        if (updated) setCourse(updated);
+        alert("Archivo subido correctamente");
+      } catch { alert("Error al subir el archivo"); }
+    };
+    input.click();
+  };
   const addResource = async () => {
     if (!newRes || !resForm.title) return err("El titulo es obligatorio");
     setSaving(true);
